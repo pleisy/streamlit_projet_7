@@ -1,0 +1,12 @@
+# directories
+OLD/
+
+# fichiers
+streamlit_app_IRIS.py
+streamlit_config_default.txt
+streamlit_app1.py
+streamlit_app2.py
+streamlit_app8.py
+streamlit_app9.py
+
+LightGBMClassifier.pkl

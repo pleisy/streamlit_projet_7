@@ -1,0 +1,12 @@
+streamlit
+panda
+numpy
+
+# plotting
+matplotlib
+seaborn
+plotly
+
+# ML
+sklearn
+lightgbm
