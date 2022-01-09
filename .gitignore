@@ -1,7 +1,9 @@
 # directories
+!*
 OLD/
 
 # fichiers
+.DS_Store
 streamlit_app_IRIS.py
 streamlit_config_default.txt
 streamlit_app1.py

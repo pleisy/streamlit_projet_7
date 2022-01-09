@@ -42,7 +42,7 @@ def prediction(df):
     return prediction
 
 
-#@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True)
 def load_data(f_csv, nrows=None, comp='infer'):
     df_f = pd.read_csv(f_csv, nrows=nrows, compression=comp)
     numeric_cols = df_f.select_dtypes(['float','int']).columns
@@ -65,17 +65,30 @@ def main():
     feat_6 = df.iloc[:,2:].columns
     #st.write(feat_6)    
  
-    # Title of the dashboard
+    # Titre du dashboard
     st.write("Version de STREAMLIT: " + st.__version__)
-    st.title('Dashboard Scoring Credit')
+    # aspect Front end 
+    html_titre = """ 
+        <div style ="background-color:white;padding:13px"> 
+        <h1 style ="color:blue;text-align:center;">Streamlit Dashboard Scoring Credit</h1> 
+        </div> 
+        """
+    #st.title('Dashboard Scoring Credit')
+    st.markdown(html_titre, unsafe_allow_html = True) 
+
 
 # Sidebar
-    st.sidebar.subheader("Choix des fichiers")
-    uploaded_file = st.sidebar.file_uploader(
-            label="Charger votre fichier CSV ou Excel (200~MB max)", type=['csv', 'xlsx'])
+
+    # Choix du seuil
+    st.sidebar.subheader("Seuil d'acceptation des crédits")
+    seuil = st.sidebar.slider("Choisir le seuil", min_value=0.5, max_value=1.0,
+        value=0.75, step=0.01)
+    #st.sidebar.subheader("Choix des fichiers")
+    #uploaded_file = st.sidebar.file_uploader(
+    #        label="Charger votre fichier CSV ou Excel (200~MB max)", type=['csv', 'xlsx'])
 
     # checkbox widget
-    checkbox = st.sidebar.checkbox(label="Montrer les données")
+    checkbox = st.sidebar.checkbox(label="Montrer les'histogramme des données")
     if checkbox:
         st.dataframe(data=df.head(3))
         df_a = pd.DataFrame(df[:], columns=['TARGET'])
@@ -85,21 +98,24 @@ def main():
         st.pyplot(fig)
 
     st.sidebar.subheader("Choix du client")
-    client = st.sidebar.selectbox(label='', options=df['SK_ID_CURR'], index=0)
+    client = st.sidebar.selectbox(label='Liste de tous les clients',
+        options=df['SK_ID_CURR'], index=1)
     st.write(f'Vous êtes le client {client}')
     df_client = df[df['SK_ID_CURR'] == client]
     df_client_v = list(df_client['TARGET'])[0]     # Formatage de la valeur
     df_client_v = "{:.3f}".format(df_client_v)
 
-
-    if st.sidebar.checkbox(label="Mauvais clients"):
-        st.sidebar.subheader("Clients non acceptés")
-        df_bad = df[df['TARGET'] <= 0.80]
-        st.write("Nombre de BAD clients", df_bad.shape)
-        st.write(df_bad.head(3))
-        client2 = st.sidebar.selectbox(label='', options=df['TARGET'], index=1)
+    non_accepte = st.sidebar.checkbox(label="Clients refusés")
+    if non_accepte:
+        st.sidebar.subheader("Choix du clients non accepté")
+        df_bad = df[df['TARGET'] <= seuil]
+        st.write("Nombre de clients refusés", df_bad.shape[0])
+        n_index = int(df_bad.index[0])
+        #st.write(df_bad.head(3)), 
+        client2 = st.sidebar.selectbox(label='liste des clients refusés',
+            options=df_bad['SK_ID_CURR'], index=n_index)
         st.write(f'Vous êtes le client {client2}')
-        df_client2 = df[df['TARGET'] == client2]
+        df_client2 = df[df['SK_ID_CURR'] == client2]
         df_client_v2 = list(df_client2['TARGET'])[0]     # Formatage de la valeur
         df_client_v2 = "{:.3f}".format(df_client_v2)
 
@@ -116,7 +132,7 @@ def main():
         if maxi != 0:
             factor = 1
         #st.write(n, var, int(factor*slide0[n]), factor*(np.max(df[var])))
-        slide[n] = st.sidebar.slider("Variable {}".format(var),
+        slide[n] = st.sidebar.slider("Variable: {}".format(var),
             min_value=factor*int(np.min(df[var])), max_value=factor*int(np.max(df[var])+1),
             value=int(factor*slide0[n]), step=1)
 
@@ -126,8 +142,12 @@ def main():
     st.table(features_df)
 
 # Fenetre principale
-    st.write(f'Votre probabilité de remboursement est {df_client_v}')
-    if float(df_client_v) >= 0.85:   # 0.75
+    if non_accepte:
+        proba = df_client_v2
+    else:
+        proba = df_client_v
+    st.write(f'Votre probabilité de remboursement est {proba}')
+    if float(proba) >= seuil:   # 0.75
         st.success("Credit ...  Accordé ")
     else:
         st.error("Credit ...  Refusé ")
@@ -138,7 +158,7 @@ def main():
     # Suppression de certaines colonnes:
     # ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index', 'TARGET', 'PREDICTIONS']
     donnees.drop(['SK_ID_CURR'], axis=1, inplace=True)
-    st.write(donnees.shape)
+    #st.write(donnees.shape)
 
     for n, var in enumerate(feat_6):
         factor = 100
