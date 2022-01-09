@@ -100,7 +100,6 @@ def main():
     st.sidebar.subheader("Choix du client")
     client = st.sidebar.selectbox(label='Liste de tous les clients',
         options=df['SK_ID_CURR'], index=1)
-    st.write(f'Vous êtes le client {client}')
     df_client = df[df['SK_ID_CURR'] == client]
     df_client_v = list(df_client['TARGET'])[0]     # Formatage de la valeur
     df_client_v = "{:.3f}".format(df_client_v)
@@ -118,7 +117,8 @@ def main():
         df_client2 = df[df['SK_ID_CURR'] == client2]
         df_client_v2 = list(df_client2['TARGET'])[0]     # Formatage de la valeur
         df_client_v2 = "{:.3f}".format(df_client_v2)
-
+    else:
+        st.write(f'Vous êtes le client {client}')
 
     # Les 6 variables
     slide0 = [0]*len(feat_6)
@@ -141,20 +141,20 @@ def main():
     features_df = pd.DataFrame([features])
     st.table(features_df)
 
-# Fenetre principale
+# Fenetre principale  et  Nouvelles valeurs
     if non_accepte:
         proba = df_client_v2
+        donnees = data[data['SK_ID_CURR'] == client2]
     else:
         proba = df_client_v
+        donnees = data[data['SK_ID_CURR'] == client]
     st.write(f'Votre probabilité de remboursement est {proba}')
     if float(proba) >= seuil:   # 0.75
         st.success("Credit ...  Accordé ")
     else:
         st.error("Credit ...  Refusé ")
 
-
-    # Nouvelles valeurs
-    donnees = data[data['SK_ID_CURR'] == client]
+ 
     # Suppression de certaines colonnes:
     # ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index', 'TARGET', 'PREDICTIONS']
     donnees.drop(['SK_ID_CURR'], axis=1, inplace=True)
