@@ -32,7 +32,7 @@ def request_prediction(model_uri, data):
     return response.json()
 
 
-# loading the trained model
+# Chargement du model entrainé
 pickle_in = open('./LightGBMClassifier_all.pkl', 'rb') 
 classifier = pickle.load(pickle_in)
 
@@ -40,6 +40,15 @@ classifier = pickle.load(pickle_in)
 def prediction(df):
     prediction = classifier.predict_proba(df)[0]   # A et B (A = 1 - B)
     return prediction
+
+
+def pret_accord(texte, proba, seuil):
+    #st.write(str(texte) + '{:.3f}'.format(str(proba)))
+    st.write('La probabilité de remboursement est :', proba)
+    if float(proba) >= seuil:
+        st.success("Credit ...  Accordé ")
+    else:
+        st.error("Credit ...  Refusé ")
 
 
 @st.cache(allow_output_mutation=True)
@@ -51,7 +60,7 @@ def load_data(f_csv, nrows=None, comp='infer'):
 
 
 def main():
-    MLFLOW_URI = 'http://127.0.0.1:5000/invocations'
+    #MLFLOW_URI = 'http://127.0.0.1:5000/invocations'
 
     # Chargement des données (remplacement des valeurs NaN par 0)
     data_load_state = st.text('Chargement des données...')
@@ -60,17 +69,16 @@ def main():
     data.fillna(0, inplace=True)
     df, n2_cols, t2_cols = load_data('./sub_model_B_all.csv')  #, nrows=x)
     df.fillna(0, inplace=True)
-    data_load_state.text("Done! (... avec les fichiers chargés en cache)")
+    data_load_state.text("Done! (... fichiers sont chargés en cache)")
     df.fillna(0, inplace=True)
-    feat_6 = df.iloc[:,2:].columns
-    #st.write(feat_6)    
+    feat_6 = df.iloc[:,2:].columns      #st.write(feat_6)    
  
     # Titre du dashboard
     st.write("Version de STREAMLIT: " + st.__version__)
     # aspect Front end 
     html_titre = """ 
-        <div style ="background-color:white;padding:13px"> 
-        <h1 style ="color:blue;text-align:center;">Streamlit Dashboard Scoring Credit</h1> 
+        <div style ="background-color:yellow;padding:13px"> 
+        <h1 style ="color:blue;text-align:center;">STREAMLIT: Dashboard Scoring Credit</h1> 
         </div> 
         """
     #st.title('Dashboard Scoring Credit')
@@ -78,47 +86,46 @@ def main():
 
 
 # Sidebar
-
     # Choix du seuil
     st.sidebar.subheader("Seuil d'acceptation des crédits")
-    seuil = st.sidebar.slider("Choisir le seuil", min_value=0.5, max_value=1.0,
+    seuil = st.sidebar.slider("Choisir le seuil", min_value=0.20, max_value=1.0,
         value=0.75, step=0.01)
     #st.sidebar.subheader("Choix des fichiers")
     #uploaded_file = st.sidebar.file_uploader(
     #        label="Charger votre fichier CSV ou Excel (200~MB max)", type=['csv', 'xlsx'])
-
     # checkbox widget
-    checkbox = st.sidebar.checkbox(label="Montrer les'histogramme des données")
-    if checkbox:
-        st.dataframe(data=df.head(3))
+    boxHisto = st.sidebar.checkbox(label="Montrer les'histogramme des données")
+    if boxHisto:
+        #st.dataframe(data=df.head(3))
         df_a = pd.DataFrame(df[:], columns=['TARGET'])
         fig, ax = plt.subplots(figsize=(5,2))
         ax.hist(df_a['TARGET'], bins=150)
         plt.show()
         st.pyplot(fig)
 
-    st.sidebar.subheader("Choix du client")
-    client = st.sidebar.selectbox(label='Liste de tous les clients',
-        options=df['SK_ID_CURR'], index=1)
-    df_client = df[df['SK_ID_CURR'] == client]
-    df_client_v = list(df_client['TARGET'])[0]     # Formatage de la valeur
-    df_client_v = "{:.3f}".format(df_client_v)
-
+    # Label du client choisit
     non_accepte = st.sidebar.checkbox(label="Clients refusés")
     if non_accepte:
-        st.sidebar.subheader("Choix du clients non accepté")
-        df_bad = df[df['TARGET'] <= seuil]
-        st.write("Nombre de clients refusés", df_bad.shape[0])
-        n_index = int(df_bad.index[0])
-        #st.write(df_bad.head(3)), 
-        client2 = st.sidebar.selectbox(label='liste des clients refusés',
-            options=df_bad['SK_ID_CURR'], index=n_index)
-        st.write(f'Vous êtes le client {client2}')
-        df_client2 = df[df['SK_ID_CURR'] == client2]
-        df_client_v2 = list(df_client2['TARGET'])[0]     # Formatage de la valeur
-        df_client_v2 = "{:.3f}".format(df_client_v2)
+        st.sidebar.subheader("Choix du client non accepté")
+        # REST_INDEX ... correction sinon BUG index trop grands / nombre de valeurs
+        df_bad = df[df['TARGET'] <= seuil].reset_index()
+        if df_bad.shape[0] > 0:
+            st.write("Nombre de clients refusés", df_bad.shape[0])
+            n_index = int(df_bad.index[0])
+            client = st.sidebar.selectbox(label='liste des clients refusés',
+                options=df_bad['SK_ID_CURR'], index=n_index)
+            df_client = df_bad[df_bad['SK_ID_CURR'] == client]
+        else:
+            st.error("Aucun client refusé")
     else:
-        st.write(f'Vous êtes le client {client}')
+        st.sidebar.subheader("Choix du client")
+        client = st.sidebar.selectbox(label='Liste de tous les clients',
+            options=df['SK_ID_CURR'], index=0)
+        df_client = df[df['SK_ID_CURR'] == client]
+ 
+    st.write(f'Vous êtes le client {client}')
+    df_client_val = list(df_client['TARGET'])[0]     # Formatage de la valeur
+    df_client_val = "{:.3f}".format(df_client_val)
 
     # Les 6 variables
     slide0 = [0]*len(feat_6)
@@ -127,60 +134,51 @@ def main():
     features_new = {}
     for n, var in enumerate(feat_6):
         slide0[n] = list(df_client[var].values)[0]
-        factor = 100
-        maxi = int(np.max(df[var]))
-        if maxi != 0:
-            factor = 1
-        #st.write(n, var, int(factor*slide0[n]), factor*(np.max(df[var])))
-        slide[n] = st.sidebar.slider("Variable: {}".format(var),
-            min_value=factor*int(np.min(df[var])), max_value=factor*int(np.max(df[var])+1),
-            value=int(factor*slide0[n]), step=1)
+        if non_accepte:
+            mini = float(np.min(df_bad[var]))
+            maxi = float(np.max(df_bad[var]))
+            slide[n] = st.sidebar.slider("Variable: {}".format(var),
+                min_value=mini, max_value=maxi, value=float(slide0[n]), step=1/100)
+        else:
+            mini = float(np.min(df[var]))
+            maxi = float(np.max(df[var]))
+            slide[n] = st.sidebar.slider("Variable: {}".format(var),
+                min_value=mini, max_value=maxi, value=float(slide0[n]), step=1/100)
 
         features[var] = slide0[n]
         features_new[var] = slide[n]
     features_df = pd.DataFrame([features])
     st.table(features_df)
-
-# Fenetre principale  et  Nouvelles valeurs
-    if non_accepte:
-        proba = df_client_v2
-        donnees = data[data['SK_ID_CURR'] == client2]
-    else:
-        proba = df_client_v
-        donnees = data[data['SK_ID_CURR'] == client]
-    st.write(f'Votre probabilité de remboursement est {proba}')
-    if float(proba) >= seuil:   # 0.75
-        st.success("Credit ...  Accordé ")
-    else:
-        st.error("Credit ...  Refusé ")
-
- 
-    # Suppression de certaines colonnes:
-    # ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index', 'TARGET', 'PREDICTIONS']
-    donnees.drop(['SK_ID_CURR'], axis=1, inplace=True)
-    #st.write(donnees.shape)
-
-    for n, var in enumerate(feat_6):
-        factor = 100
-        maxi = int(np.max(df[var]))
-        if maxi != 0:
-            factor = 1
-        #st.write(var, "  Old:",int(factor*slide0[n]), "New",slide[n])
-        #st.write(n, var, list(donnees[var].values)[0], slide[n])
-        donnees[var] = slide[n]
-
     features_new_df = pd.DataFrame([features_new])
     st.table(features_new_df)
 
+# Fenetre principale  et  Nouvelles valeurs
+# Suppression de certaines colonnes:
+# ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index', 'TARGET', 'PREDICTIONS']  
+ 
+    proba = df_client_val
+ #   if non_accepte:
+ #       data_bad = data[data['TARGET'] <= seuil].reset_index()
+#        donnees = data_bad[data_bad['SK_ID_CURR'] == client]
+#    else:
+    donnees = data[data['SK_ID_CURR'] == client].reset_index()
+    donnees.drop(['SK_ID_CURR', 'index'], axis=1, inplace=True)
+    features_new = {}
+    for n, var in enumerate(feat_6):
+        donnees[var] = slide[n]
+        
+    titre = "Votre probabilité de remboursement est: " + proba
+    pret_accord(titre, proba, seuil)
+    st.write(donnees)
 
     if st.button('Recalculer'):
-        st.write(donnees)
+        #st.write(donnees)
         pred = None
         #if api_choice == 'MLflow':
-        pred = prediction(donnees)[0]
+        pred = "{:.3f}".format(prediction(donnees)[0])
         #pred = request_prediction(MLFLOW_URI, donnees)[0]
-        st.write('La nouvelle probabilité est {:.3f}'.format(pred))
-
+        titre = "La nouvelle probabilité de remboursement est: " + pred
+        pret_accord(titre, pred, seuil)
 
 if __name__ == '__main__':
     main()
