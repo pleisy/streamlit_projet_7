@@ -42,6 +42,6 @@ creation d'un nouvelle APP
 formulaire à completer: nom repository  - branche - nom appli
 click sur le boutton de deployement de l'appli
 ```
-[https://share.streamlit.io/pleisy/streamlit_projet_7/P7_dashboard_predict.py]
+[https://share.streamlit.io/pleisy/streamlit_projet_7/P7_dashboard_predict.py](https://share.streamlit.io/pleisy/streamlit_projet_7)
 
 Note: l'appli fonctionne pendant 15 jours et ensuite est mise en veille si elle n'est pas utilisée

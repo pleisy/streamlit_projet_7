@@ -132,7 +132,6 @@ def main():
         df_client = df[df['SK_ID_CURR'] == client]
  
     col1.header(f'Vous êtes le client {client}')
-    st.write()
 
     df_client_val = "{:.3f}".format(list(df_client['TARGET'])[0])        # Formatage de la valeur
 
@@ -167,27 +166,29 @@ def main():
 #    if non_accepte:
 #        data_bad = data[data['TARGET'] <= seuil].reset_index()
 #        donnees = data_bad[data_bad['SK_ID_CURR'] == client]
-    donnees = data[data['SK_ID_CURR'] == client].reset_index(drop=True)  #si False
+    st.write(df_client)
+    donnees = data[data['SK_ID_CURR'] == client].reset_index(drop=False)  #si False/True
+    index = donnees['index']
+    st.write(donnees)
+
 # Suppression de certaines colonnes:
 # ['TARGET','SK_ID_CURR','SK_ID_BUREAU','SK_ID_PREV','index', 'TARGET', 'PREDICTIONS']
-    donnees.drop(['SK_ID_CURR'], axis=1, inplace=True)    # supprimer aussi 'index'
-    donnees0 = donnees.copy()
+    donnees.drop(['SK_ID_CURR', 'index'], axis=1, inplace=True)    # supprimer aussi 'index'
     for n, var in enumerate(feat_6):
         donnees[var] = slide[n]
 
     proba = df_client_val
-    proba0 = "{:.3f}".format(prediction(donnees0)[0])
-    titre = "Votre probabilité de remboursement est: (" + proba + " --- " + proba0 + ")"
+    #proba0 = "{:.3f}".format(prediction(donnees)[0])
+    titre = "Votre probabilité de remboursement est: " + proba
     pret_accord(titre, proba, seuil)
-    st.write(donnees, donnees.shape)
-
+    
     if st.button('Recalculer'):
         #st.write(donnees)
         pred = None
         #if api_choice == 'MLflow':
         pred = "{:.3f}".format(prediction(donnees)[0])
         #pred = request_prediction(MLFLOW_URI, donnees)[0]
-        titre = "La nouvelle probabilité de remboursement est: " + pred
+        titre = "La nouvelle probabilité de remboursement est: " + pred 
         pret_accord(titre, pred, seuil)
 
 if __name__ == '__main__':
